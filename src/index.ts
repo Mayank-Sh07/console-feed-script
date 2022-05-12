@@ -3,13 +3,12 @@ import {
   Callback,
   Storage,
   Methods as ConsoleMethods,
-  Message
-} from '../definitions/Console'
-import Methods from '../definitions/Methods'
+  Message,
+} from './definitions/Console';
+import Methods from './definitions/Methods';
 
-import Parse from './parse'
-import Unhook from '../Unhook'
-import { Encode } from '../Transform'
+import Parse from './Hook/parse';
+import { Encode } from './Transform';
 // import Construct from './construct'
 
 /**
@@ -22,45 +21,45 @@ export default function Hook(
   callback: Callback,
   encode = true
 ) {
-  const TargetConsole = console as HookedConsole
+  const TargetConsole = console as HookedConsole;
   const Storage: Storage = {
     pointers: {},
     src: {
       npm: 'https://npmjs.com/package/console-feed',
-      github: 'https://github.com/samdenty99/console-feed'
-    }
-  }
+      github: 'https://github.com/samdenty99/console-feed',
+    },
+  };
 
   // Override console methods
   for (let method of Methods) {
-    const NativeMethod = TargetConsole[method]
+    const NativeMethod = TargetConsole[method];
 
     // Override
-    TargetConsole[method] = function() {
+    TargetConsole[method] = function () {
       // Pass back to native method
-      NativeMethod.apply(this, arguments)
+      NativeMethod.apply(this, arguments);
 
       // Parse arguments and send to transport
-      const args = [].slice.call(arguments)
+      const args = [].slice.call(arguments);
 
       // setTimeout to prevent lag
       setTimeout(() => {
-        const parsed = Parse(method as ConsoleMethods, args)
+        const parsed = Parse(method as ConsoleMethods, args);
         if (parsed) {
-          let encoded: Message = parsed as Message
+          let encoded: Message = parsed as Message;
           if (encode) {
-            encoded = Encode(parsed) as Message
+            encoded = Encode(parsed) as Message;
           }
-          callback(encoded, parsed)
+          callback(encoded, parsed);
         }
-      })
-    }
+      });
+    };
 
     // Store native methods
-    Storage.pointers[method] = NativeMethod
+    Storage.pointers[method] = NativeMethod;
   }
 
-  TargetConsole.feed = Storage
+  TargetConsole.feed = Storage;
 
-  return TargetConsole
+  return TargetConsole;
 }
