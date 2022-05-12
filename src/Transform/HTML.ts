@@ -1,23 +1,24 @@
 // Sandbox HTML elements
-let sandbox: Document
+let sandbox: Document;
 function getSandbox() {
-  return (sandbox ||= document.implementation.createHTMLDocument('sandbox'))
+  return (sandbox ||=
+    document.implementation.createHTMLDocument('sandbox'));
 }
 
 interface Storage {
-  tagName: string
+  tagName: string;
   attributes: {
-    [attribute: string]: string
-  }
-  innerHTML: string
+    [attribute: string]: string;
+  };
+  innerHTML: string;
 }
 
 function objectifyAttributes(element: any) {
-  const data = {}
+  const data = {};
   for (let attribute of element.attributes) {
-    data[attribute.name] = attribute.value
+    data[attribute.name] = attribute.value;
   }
-  return data
+  return data;
 }
 
 /**
@@ -26,32 +27,36 @@ function objectifyAttributes(element: any) {
 export default {
   type: 'HTMLElement',
   shouldTransform(type: any, obj: any) {
-    return (
-      obj &&
-      obj.children &&
-      typeof obj.innerHTML === 'string' &&
-      typeof obj.tagName === 'string'
-    )
+    if (!obj) return false;
+    const hasChildren =
+      obj.hasOwnProperty('children') && obj.children;
+    const hasInnerHTML =
+      obj.hasOwnProperty('innerHTML') &&
+      typeof obj.innerHTML === 'string';
+    let hasTagName =
+      obj.hasOwnProperty('tagName') &&
+      typeof obj.tagName === 'string';
+    return obj && hasChildren && hasInnerHTML && hasTagName;
   },
   toSerializable(element: HTMLElement) {
     return {
       tagName: element.tagName.toLowerCase(),
       attributes: objectifyAttributes(element),
       innerHTML: element.innerHTML,
-    } as Storage
+    } as Storage;
   },
   fromSerializable(data: Storage) {
     try {
-      const element = getSandbox().createElement(data.tagName)
-      element.innerHTML = data.innerHTML
+      const element = getSandbox().createElement(data.tagName);
+      element.innerHTML = data.innerHTML;
       for (let attribute of Object.keys(data.attributes)) {
         try {
-          element.setAttribute(attribute, data.attributes[attribute])
+          element.setAttribute(attribute, data.attributes[attribute]);
         } catch (e) {}
       }
-      return element
+      return element;
     } catch (e) {
-      return data
+      return data;
     }
   },
-}
+};

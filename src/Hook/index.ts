@@ -1,6 +1,5 @@
 import {
   HookedConsole,
-  Callback,
   Storage,
   Methods as ConsoleMethods,
   Message,
@@ -12,15 +11,10 @@ import { Encode } from '../Transform';
 // import Construct from './construct'
 
 /**
- * Hook a console constructor and forward messages to a callback
+ * Hook a console constructor and forward messages using parent.postMessage()
  * @argument console The Console constructor to Hook
- * @argument callback The callback to be called once a message is logged
  */
-export default function Hook(
-  console: Console,
-  callback: Callback,
-  encode = true
-) {
+export default function Hook(console: Console, encode = true) {
   const TargetConsole = console as HookedConsole;
   const Storage: Storage = {
     pointers: {},
@@ -50,7 +44,14 @@ export default function Hook(
           if (encode) {
             encoded = Encode(parsed) as Message;
           }
-          callback(encoded, parsed);
+          parent.postMessage(
+            {
+              from: 'codedamn-iframe',
+              type: 'entry',
+              data: encoded,
+            },
+            '*'
+          );
         }
       });
     };
