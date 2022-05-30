@@ -279,8 +279,14 @@ class EncodingTransformer {
 
     if (hasOverflown) {
       setTimeout(() => {
-        // @ts-ignore
-        window.warnSizzyConsoleOverflow?.();
+        /* Warn the console of an overflow */
+        parent.postMessage(
+          {
+            from: 'codedamn-iframe',
+            type: 'overflow',
+          },
+          '*'
+        );
       }, 0);
     }
 
