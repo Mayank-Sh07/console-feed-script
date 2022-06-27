@@ -13,7 +13,6 @@ const GLOBAL = (function getGlobal() {
 const ARRAY_BUFFER_SUPPORTED = typeof ArrayBuffer === 'function';
 const MAP_SUPPORTED = typeof Map === 'function';
 const SET_SUPPORTED = typeof Set === 'function';
-const MAX_KEYS = 100;
 
 const TYPED_ARRAY_CTORS = [
   'Int8Array',
@@ -72,13 +71,7 @@ class EncodingTransformer {
     this.circularCandidatesDescrs.push({ parent, key, refIdx: -1 });
   }
 
-  _applyTransform(
-    val: any,
-    parent: any,
-    key: any,
-    transform: any,
-    onOverflow: () => void
-  ) {
+  _applyTransform(val: any, parent: any, key: any, transform: any) {
     const result = Object.create(null);
     const serializableVal = transform.toSerializable(val);
 
@@ -89,75 +82,52 @@ class EncodingTransformer {
     result.data = this._handleValue(
       () => serializableVal,
       parent,
-      key,
-      onOverflow
+      key
     );
 
     return result;
   }
 
-  _handleArray(arr: any, onOverflow: () => void): any {
+  _handleArray(arr: any): any {
     const result = [] as any;
-    const limit = Math.min(arr.length || MAX_KEYS);
 
-    for (let i = 0; i < limit; i++)
-      result[i] = this._handleValue(
-        () => arr[i],
-        result,
-        i,
-        onOverflow
-      );
-
-    if (arr.length > MAX_KEYS) {
-      onOverflow();
-    }
+    for (let i = 0; i < arr.length; i++)
+      result[i] = this._handleValue(() => arr[i], result, i);
 
     return result;
   }
 
-  _handlePlainObject(obj: any, onOverflow: () => void) {
+  _handlePlainObject(obj: any) {
     const result = Object.create(null);
-    let counter = 0;
 
     for (const key in obj) {
-      if (counter < MAX_KEYS) {
-        if (Reflect.has(obj, key)) {
-          const resultKey = KEY_REQUIRE_ESCAPING_RE.test(key)
-            ? `#${key}`
-            : key;
+      if (Reflect.has(obj, key)) {
+        const resultKey = KEY_REQUIRE_ESCAPING_RE.test(key)
+          ? `#${key}`
+          : key;
 
-          result[resultKey] = this._handleValue(
-            () => obj[key],
-            result,
-            resultKey,
-            onOverflow
-          );
-          counter++;
-        }
+        result[resultKey] = this._handleValue(
+          () => obj[key],
+          result,
+          resultKey
+        );
       }
     }
 
     const name = obj?.__proto__?.constructor?.name;
     if (name && name !== 'Object') {
       result.constructor = { name };
-    } else {
-      onOverflow();
     }
 
     return result;
   }
 
-  _handleObject(
-    obj: any,
-    parent: any,
-    key: any,
-    onOverflow: () => void
-  ) {
+  _handleObject(obj: any, parent: any, key: any) {
     this._createCircularCandidate(obj, parent, key);
 
     return Array.isArray(obj)
-      ? this._handleArray(obj, onOverflow)
-      : this._handlePlainObject(obj, onOverflow);
+      ? this._handleArray(obj)
+      : this._handlePlainObject(obj);
   }
 
   _ensureCircularReference(obj: any) {
@@ -176,12 +146,7 @@ class EncodingTransformer {
     return null;
   }
 
-  _handleValue(
-    getVal: () => any,
-    parent: any,
-    key: any,
-    onOverflow: () => void
-  ) {
+  _handleValue(getVal: () => any, parent: any, key: any) {
     try {
       const val = getVal();
       const type = typeof val;
@@ -196,17 +161,10 @@ class EncodingTransformer {
       const transform = this._findTransform(type, val);
 
       if (transform) {
-        return this._applyTransform(
-          val,
-          parent,
-          key,
-          transform,
-          onOverflow
-        );
+        return this._applyTransform(val, parent, key, transform);
       }
 
-      if (isObject)
-        return this._handleObject(val, parent, key, onOverflow);
+      if (isObject) return this._handleObject(val, parent, key);
 
       return val;
     } catch (e) {
@@ -214,8 +172,7 @@ class EncodingTransformer {
         return this._handleValue(
           () => (e instanceof Error ? e : new Error(e)),
           parent,
-          key,
-          onOverflow
+          key
         );
       } catch {
         return null;
@@ -252,20 +209,8 @@ class EncodingTransformer {
   }
 
   transform() {
-    let hasOverflown = false;
-    const onOverflow = () => {
-      if (!hasOverflown) {
-        hasOverflown = true;
-      }
-    };
-
     const references = [
-      this._handleValue(
-        () => this.references,
-        null,
-        null,
-        onOverflow
-      ),
+      this._handleValue(() => this.references, null, null),
     ];
 
     for (const descr of this.circularCandidatesDescrs) {
@@ -275,19 +220,6 @@ class EncodingTransformer {
           descr.refIdx
         );
       }
-    }
-
-    if (hasOverflown) {
-      setTimeout(() => {
-        /* Warn the console of an overflow */
-        parent.postMessage(
-          {
-            from: 'codedamn-iframe',
-            type: 'overflow',
-          },
-          '*'
-        );
-      }, 0);
     }
 
     return references;
