@@ -11,10 +11,14 @@ import { Encode } from '../Transform';
 // import Construct from './construct'
 
 /**
- * Hook a console constructor and forward messages using parent.postMessage()
+ * Hook a console constructor and forward messages to a callback
  * @argument console The Console constructor to Hook
  */
-export default function Hook(console: Console, encode = true) {
+export default function Hook(
+  console: Console,
+  encode = true,
+  limit?: number
+) {
   const TargetConsole = console as HookedConsole;
   const Storage: Storage = {
     pointers: {},
@@ -42,7 +46,7 @@ export default function Hook(console: Console, encode = true) {
         if (parsed) {
           let encoded: Message = parsed as Message;
           if (encode) {
-            encoded = Encode(parsed) as Message;
+            encoded = Encode(parsed, limit) as Message;
           }
           parent.postMessage(
             {
