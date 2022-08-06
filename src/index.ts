@@ -2,7 +2,7 @@ import Hook from './Hook';
 
 (function () {
   // Hook into the iframe Console
-  Hook(window.console, true);
+  Hook(window.console, true, 100);
 
   // Log JS errors
   window.addEventListener('error', ({ error }) => {

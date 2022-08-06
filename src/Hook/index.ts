@@ -43,7 +43,7 @@ export default function Hook(
       // setTimeout to prevent lag
       setTimeout(() => {
         const parsed = Parse(method as ConsoleMethods, args);
-        if (parsed) {
+        if (parsed && parsed.method !== 'clear') {
           let encoded: Message = parsed as Message;
           if (encode) {
             encoded = Encode(parsed, limit) as Message;
